@@ -205,6 +205,8 @@ int main(int argc, char * argv[]) {
     std::string scan_mode;
     float max_distance;
     float scan_frequency;
+    int scan_timeout = sl::ILidarDriver::DEFAULT_TIMEOUT;
+    int desired_motor_speed = 600;
     ros::NodeHandle nh;
     ros::Publisher scan_pub = nh.advertise<sensor_msgs::LaserScan>("scan", 1000);
     ros::NodeHandle nh_private("~");
@@ -224,6 +226,15 @@ int main(int argc, char * argv[]) {
     }
     else{
         nh_private.param<float>("scan_frequency", scan_frequency, 10.0);
+    }
+
+    scan_timeout = static_cast<int>(scan_frequency * 10);
+    desired_motor_speed = static_cast<int>(scan_frequency * 62); // 62 for being able to catch 17Hz(max) with DenseBoost
+    if (desired_motor_speed > 1023) // hack for S1... TODO get it from LidarMotorInfo lmi; drv->getMotorInfo(lmi);
+    {
+        ROS_ERROR_STREAM("Required motor speed for the requested scanning frequency exceeds S1's max rotation "
+                        "speed: " << desired_motor_speed << ". Defaulting motor speed to the maximum: 1023.");
+        desired_motor_speed = 1023;
     }
 
     int ver_major = SL_LIDAR_SDK_VERSION_MAJOR;
@@ -322,12 +333,22 @@ int main(int argc, char * argv[]) {
     ros::Time start_scan_time;
     ros::Time end_scan_time;
     double scan_duration;
+
+    ROS_INFO_STREAM("Setting motor speed to " << desired_motor_speed);
+    for (uint i = 0; i < static_cast<int>(scan_frequency); i++)
+    {
+        sl_lidar_response_measurement_node_hq_t nodes[8192];
+        size_t   count = _countof(nodes);
+        drv->setMotorSpeed(desired_motor_speed);
+        drv->grabScanDataHq(nodes, count, scan_timeout);
+    }
+
     while (ros::ok()) {
         sl_lidar_response_measurement_node_hq_t nodes[8192];
         size_t   count = _countof(nodes);
 
         start_scan_time = ros::Time::now();
-        op_result = drv->grabScanDataHq(nodes, count);
+        op_result = drv->grabScanDataHq(nodes, count, scan_timeout);
         end_scan_time = ros::Time::now();
         scan_duration = (end_scan_time - start_scan_time).toSec();
 
@@ -381,6 +402,7 @@ int main(int argc, char * argv[]) {
                              frame_id);
                }
             } else if (op_result == SL_RESULT_OPERATION_FAIL) {
+                ROS_WARN_STREAM("SL_RESULT_OPERATION_FAIL after ascending the data, scan_time: " << scan_duration);
                 // All the data is invalid, just publish them
                 float angle_min = DEG2RAD(0.0f);
                 float angle_max = DEG2RAD(359.0f);
@@ -389,6 +411,10 @@ int main(int argc, char * argv[]) {
                              angle_min, angle_max, max_distance,
                              frame_id);
             }
+        }
+        else
+        {
+            ROS_WARN_STREAM("SL_RESULT_OPERATION_FAIL after grabbing, scan_time: " << scan_duration);
         }
 
         ros::spinOnce();
