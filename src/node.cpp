@@ -230,13 +230,13 @@ int main(int argc, char * argv[]) {
     }
 
     scan_timeout = static_cast<int>(scan_frequency * 10);
-    desired_motor_speed = static_cast<int>(scan_frequency * 62); // somehow 62 works for s1, realized by iterating
+    desired_motor_speed = 612; /*static_cast<int>(scan_frequency * 62); // somehow 62 works for s1, realized by iterating
     if (desired_motor_speed > 1023) // hack for S1... TODO get it from LidarMotorInfo lmi; drv->getMotorInfo(lmi);
     {
         ROS_ERROR_STREAM("Required motor speed for the requested scanning frequency exceeds S1's max rotation "
                         "speed: " << desired_motor_speed << ". Defaulting motor speed to the maximum: 1023.");
         desired_motor_speed = 1023;
-    }
+    }*/
 
     int ver_major = SL_LIDAR_SDK_VERSION_MAJOR;
     int ver_minor = SL_LIDAR_SDK_VERSION_MINOR;
