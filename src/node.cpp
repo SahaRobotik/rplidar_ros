@@ -320,7 +320,7 @@ int main(int argc, char * argv[]) {
     {
         //default frequent is 10 hz (by motor pwm value),  current_scan_mode.us_per_sample is the number of scan point per us        
         points_per_circle = (int)(1000*1000/current_scan_mode.us_per_sample/scan_frequency);
-        angle_compensate_multiple = points_per_circle/360.0  + 1;
+        angle_compensate_multiple = points_per_circle/360.0;
         if(angle_compensate_multiple < 1) 
           angle_compensate_multiple = 1.0;
         max_distance = (float)current_scan_mode.max_distance;
