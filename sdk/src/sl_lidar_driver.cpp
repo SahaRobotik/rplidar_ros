@@ -586,7 +586,7 @@ namespace sl {
                 ans = _sendCommand(SL_LIDAR_CMD_GET_DEVICE_INFO);
                 if (!ans) return ans;
                 return _waitResponse(info, SL_LIDAR_ANS_TYPE_DEVINFO);
-            }           
+            }
         }
 
         sl_result checkMotorCtrlSupport(MotorCtrlSupport & support, sl_u32 timeout = DEFAULT_TIMEOUT)
@@ -641,7 +641,7 @@ namespace sl {
         {
             Result<nullptr_t> ans = SL_RESULT_OK;
 
-            if (!isConnected()) 
+            if (!isConnected())
                 return SL_RESULT_OPERATION_FAIL;
 
             _disableDataGrabbing();
@@ -652,10 +652,10 @@ namespace sl {
                 if (!ans) return ans;
                 delay(50);
                 ans = _waitResponse(health, SL_LIDAR_ANS_TYPE_DEVHEALTH);
-                
+
             }
             return ans;
-            
+
         }
 
 		sl_result getDeviceMacAddr(sl_u8* macAddrArray, sl_u32 timeoutInMs)
@@ -697,7 +697,7 @@ namespace sl {
         sl_result setMotorSpeed(sl_u16 speed = DEFAULT_MOTOR_SPEED)
         {
             Result<nullptr_t> ans = SL_RESULT_OK;
-            
+
             if(speed == DEFAULT_MOTOR_SPEED){
                 sl_lidar_response_desired_rot_speed_t desired_speed;
                 ans = getDesiredSpeed(desired_speed);
@@ -851,7 +851,7 @@ namespace sl {
 
 				_channel->read(reinterpret_cast<sl_u8*>(&answer), header_size);
 				return answer.result;
-    
+
 			}
 
 		}
@@ -869,11 +869,11 @@ namespace sl {
                 memcpy(query.reserved, &reserve[0], reserve.size());
 
             Result<nullptr_t> ans = SL_RESULT_OK;
-            { 
+            {
                 rp::hal::AutoLocker l(_lock);
                 ans = _sendCommand(SL_LIDAR_CMD_GET_LIDAR_CONF, &query, sizeof(query));
                 if (!ans) return ans;
-				//delay(50);
+				delay(20);
                 // waiting for confirmation
                 sl_lidar_ans_header_t response_header;
                 ans = _waitResponseHeader(&response_header, timeout);
