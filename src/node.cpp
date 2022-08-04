@@ -406,7 +406,7 @@ int main(int argc, char * argv[]) {
                 ROS_WARN_STREAM("SL_RESULT_OPERATION_FAIL after ascending the data, scan_time: " << scan_duration);
                 // All the data is invalid, just publish them
                 float angle_min = DEG2RAD(0.0f);
-                float angle_max = DEG2RAD(359.0f);
+                float angle_max = DEG2RAD(360.0f);
                 publish_scan(&scan_pub, nodes, count,
                              start_scan_time, scan_duration, inverted,
                              angle_min, angle_max, max_distance,
