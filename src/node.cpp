@@ -141,10 +141,10 @@ bool checkRPLIDARHealth(ILidarDriver * drv)
         switch (healthinfo.status) {
 			case SL_LIDAR_STATUS_OK:
                 ROS_INFO("RPLidar health status : OK.");
-				return true;
+                break;
 			case SL_LIDAR_STATUS_WARNING:
                 ROS_INFO("RPLidar health status : Warning.");
-				return true;
+                break;
 			case SL_LIDAR_STATUS_ERROR:
                 ROS_ERROR("Error, rplidar internal error detected. Please reboot the device to retry.");
 				return false;
@@ -153,6 +153,7 @@ bool checkRPLIDARHealth(ILidarDriver * drv)
         ROS_ERROR("Error, cannot retrieve rplidar health code: %x", op_result);
         return false;
     }
+    return true;
 }
 
 bool stop_motor(std_srvs::Empty::Request &req,
@@ -229,7 +230,7 @@ int main(int argc, char * argv[]) {
     }
 
     scan_timeout = static_cast<int>(scan_frequency * 10);
-    desired_motor_speed = static_cast<int>(scan_frequency * 62); // 62 for being able to catch 17Hz(max) with DenseBoost
+    desired_motor_speed = static_cast<int>(scan_frequency * 62); // somehow 62 works for s1, realized by iterating
     if (desired_motor_speed > 1023) // hack for S1... TODO get it from LidarMotorInfo lmi; drv->getMotorInfo(lmi);
     {
         ROS_ERROR_STREAM("Required motor speed for the requested scanning frequency exceeds S1's max rotation "
