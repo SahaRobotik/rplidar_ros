@@ -184,7 +184,7 @@ namespace rp { namespace standalone{ namespace rplidar {
 
     u_result RPlidarDriver::startMotor()
     {
-        return (_lidarDrv)->setMotorSpeed(600);
+        return (_lidarDrv)->setMotorSpeed(1023); // TODO WARNING, max for S1
     }
     u_result RPlidarDriver::stopMotor()
     {
