@@ -34,6 +34,8 @@
 
 #include "ros/ros.h"
 #include "sensor_msgs/LaserScan.h"
+#include "sensor_msgs/PointCloud2.h"
+#include <sensor_msgs/point_cloud2_iterator.h>
 #include "std_srvs/Empty.h"
 #include "sl_lidar.h" 
 
@@ -102,6 +104,64 @@ void publish_scan(ros::Publisher *pub,
     }
 
     pub->publish(scan_msg);
+}
+
+void publish_cloud(ros::Publisher *pub,
+                  sl_lidar_response_measurement_node_hq_t *nodes,
+                  size_t node_count, ros::Time start,
+                  std::string frame_id)
+{
+
+    sensor_msgs::PointCloud2 cloud;
+
+    cloud.header.stamp = ros::Time::now();
+    cloud.header.frame_id = std::move(frame_id);
+    cloud.height = 1;
+    cloud.width = node_count;
+    cloud.is_bigendian = false;
+    cloud.is_dense = false; // there may be invalid points
+
+    sensor_msgs::PointCloud2Modifier modifier(cloud);
+    modifier.setPointCloud2FieldsByString(2,"xyz","rgb");
+    modifier.resize(node_count);
+
+    sensor_msgs::PointCloud2Iterator<float> out_x(cloud, "x");
+    sensor_msgs::PointCloud2Iterator<float> out_y(cloud, "y");
+    sensor_msgs::PointCloud2Iterator<float> out_z(cloud, "z");
+    sensor_msgs::PointCloud2Iterator<uint8_t> out_r(cloud, "r");
+    sensor_msgs::PointCloud2Iterator<uint8_t> out_g(cloud, "g");
+    sensor_msgs::PointCloud2Iterator<uint8_t> out_b(cloud, "b");
+
+    for (size_t i = 0; i < node_count; i++)
+    {
+        double dist = (double) nodes[i].dist_mm_q2/4.0f/1000;
+        double angle = DEG2RAD(nodes[i].angle_z_q14 * 90. / 16384.);
+
+        if (dist == 0.0)
+        {
+            *out_x = std::numeric_limits<float>::infinity();
+            *out_y = std::numeric_limits<float>::infinity();
+        }
+        else
+        {
+            *out_x = (float) (dist * -cos(angle));
+            *out_y = (float) (dist * sin(angle));
+        }
+        *out_z = 0.0;
+        *out_r = 255;
+        *out_g = 255;
+        *out_b = 255;
+
+        ++out_x;
+        ++out_y;
+        ++out_z;
+        ++out_r;
+        ++out_g;
+        ++out_b;
+    }
+
+
+    pub->publish(cloud);
 }
 
 bool getRPLIDARDeviceInfo(ILidarDriver * drv)
@@ -177,7 +237,7 @@ bool start_motor(std_srvs::Empty::Request &req,
       ROS_DEBUG("Start motor");
       sl_result ans=drv->setMotorSpeed();
   
-      ans=drv->startScan(0,1);
+      ans=drv->startScan(1,1);
    }
    else ROS_INFO("lost connection");
   return true;
@@ -209,7 +269,8 @@ int main(int argc, char * argv[]) {
     int scan_timeout = sl::ILidarDriver::DEFAULT_TIMEOUT;
     int desired_motor_speed = 600;
     ros::NodeHandle nh;
-    ros::Publisher scan_pub = nh.advertise<sensor_msgs::LaserScan>("scan", 1000);
+    ros::Publisher scan_pub = nh.advertise<sensor_msgs::LaserScan>("scan", 0);
+    ros::Publisher cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("cloud", 0);
     ros::NodeHandle nh_private("~");
     nh_private.param<std::string>("channel_type", channel_type, "serial");
     nh_private.param<std::string>("tcp_ip", tcp_ip, "192.168.0.7"); 
@@ -230,7 +291,7 @@ int main(int argc, char * argv[]) {
     }
 
     scan_timeout = static_cast<int>(scan_frequency * 10);
-    desired_motor_speed = static_cast<int>(scan_frequency * 62); // rpm, but +2 for safety margin
+    desired_motor_speed = static_cast<int>(scan_frequency * 60); // rpm
     if (desired_motor_speed > 1023) // hack for S1... TODO get it from LidarMotorInfo lmi; drv->getMotorInfo(lmi);
     {
         ROS_ERROR_STREAM("Required motor speed for the requested scanning frequency exceeds S1's max rotation "
@@ -289,7 +350,7 @@ int main(int argc, char * argv[]) {
 
     LidarScanMode current_scan_mode;
     if (scan_mode.empty()) {
-        op_result = drv->startScan(false /* not force scan */, true /* use typical scan mode */, 0, &current_scan_mode);
+        op_result = drv->startScan(true /* not force scan */, true /* use typical scan mode */, 0, &current_scan_mode);
     } else {
         std::vector<LidarScanMode> allSupportedScanModes;
         op_result = drv->getAllSupportedScanModes(allSupportedScanModes);
@@ -311,7 +372,7 @@ int main(int argc, char * argv[]) {
                 }
                 op_result = SL_RESULT_OPERATION_FAIL;
             } else {
-                op_result = drv->startScanExpress(false /* not force scan */, selectedScanMode, 0, &current_scan_mode);
+                op_result = drv->startScanExpress(true /* not force scan */, selectedScanMode, 0, &current_scan_mode);
             }
         }
     }
@@ -396,6 +457,9 @@ int main(int argc, char * argv[]) {
 
                     angle_min = DEG2RAD(getAngle(nodes[start_node]));
                     angle_max = DEG2RAD(getAngle(nodes[end_node]));
+
+                    publish_cloud(&cloud_pub, &nodes[start_node], end_node-start_node +1,
+                             start_scan_time, frame_id);
 
                     publish_scan(&scan_pub, &nodes[start_node], end_node-start_node +1,
                              start_scan_time, scan_duration, inverted,
