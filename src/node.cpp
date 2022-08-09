@@ -148,9 +148,9 @@ void publish_cloud(ros::Publisher *pub,
             *out_y = (float) (dist * sin(angle));
         }
         *out_z = 0.0;
-        *out_r = 255;
-        *out_g = 255;
-        *out_b = 255;
+        *out_r = nodes[i].quality;
+        *out_g = nodes[i].quality;
+        *out_b = nodes[i].quality;
 
         ++out_x;
         ++out_y;
@@ -414,6 +414,9 @@ int main(int argc, char * argv[]) {
         end_scan_time = ros::Time::now();
         scan_duration = (end_scan_time - start_scan_time).toSec();
 
+        publish_cloud(&cloud_pub, &nodes[0], count,
+                      start_scan_time, frame_id);
+
         if (op_result == SL_RESULT_OK) {
             op_result = drv->ascendScanData(nodes, count);
             float angle_min = DEG2RAD(0.0f);
@@ -457,9 +460,6 @@ int main(int argc, char * argv[]) {
 
                     angle_min = DEG2RAD(getAngle(nodes[start_node]));
                     angle_max = DEG2RAD(getAngle(nodes[end_node]));
-
-                    publish_cloud(&cloud_pub, &nodes[start_node], end_node-start_node +1,
-                             start_scan_time, frame_id);
 
                     publish_scan(&scan_pub, &nodes[start_node], end_node-start_node +1,
                              start_scan_time, scan_duration, inverted,
