@@ -36,6 +36,7 @@
 #include "sensor_msgs/LaserScan.h"
 #include "sensor_msgs/PointCloud2.h"
 #include <sensor_msgs/point_cloud2_iterator.h>
+#include <std_msgs/Bool.h>
 #include "std_srvs/Empty.h"
 #include "sl_lidar.h" 
 
@@ -268,9 +269,16 @@ int main(int argc, char * argv[]) {
     float scan_frequency;
     int scan_timeout = sl::ILidarDriver::DEFAULT_TIMEOUT;
     int desired_motor_speed = 600;
+    std_msgs::Bool ok_msg;
+    std_msgs::Bool not_ok_msg;
+    ok_msg.data = true;
+    not_ok_msg.data = false;
+    bool status = false;
+    bool prev_status = false;
     ros::NodeHandle nh;
     ros::Publisher scan_pub = nh.advertise<sensor_msgs::LaserScan>("scan", 0);
     ros::Publisher cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("cloud", 0);
+    ros::Publisher status_pub = nh.advertise<std_msgs::Bool>("lidar_status", 0);
     ros::NodeHandle nh_private("~");
     nh_private.param<std::string>("channel_type", channel_type, "serial");
     nh_private.param<std::string>("tcp_ip", tcp_ip, "192.168.0.7"); 
@@ -418,6 +426,7 @@ int main(int argc, char * argv[]) {
                       start_scan_time, frame_id);
 
         if (op_result == SL_RESULT_OK) {
+            status = true;
             op_result = drv->ascendScanData(nodes, count);
             float angle_min = DEG2RAD(0.0f);
             float angle_max = DEG2RAD(360.0f);
@@ -479,8 +488,19 @@ int main(int argc, char * argv[]) {
         }
         else
         {
+            status = false;
             ROS_WARN_STREAM("SL_RESULT_OPERATION_FAIL after grabbing, scan_time: " << scan_duration);
         }
+
+        if (!prev_status && status)
+        {
+            status_pub.publish(ok_msg);
+        }
+        else if (prev_status && !status)
+        {
+            status_pub.publish(not_ok_msg);
+        }
+        prev_status = status;
 
         ros::spinOnce();
     }
