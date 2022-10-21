@@ -278,7 +278,7 @@ int main(int argc, char * argv[]) {
     ros::NodeHandle nh;
     ros::Publisher scan_pub = nh.advertise<sensor_msgs::LaserScan>("scan", 0);
     ros::Publisher cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("cloud", 0);
-    ros::Publisher status_pub = nh.advertise<std_msgs::Bool>("lidar_status", 0);
+    ros::Publisher status_pub = nh.advertise<std_msgs::Bool>("lidar_status", 0, true);
     ros::NodeHandle nh_private("~");
     nh_private.param<std::string>("channel_type", channel_type, "serial");
     nh_private.param<std::string>("tcp_ip", tcp_ip, "192.168.0.7"); 
